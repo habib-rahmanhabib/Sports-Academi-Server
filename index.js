@@ -2,7 +2,7 @@ const express = require('express')
 const app = express()
 const cors = require('cors')
 require('dotenv').config()
-const  port = process.env.PORT || 5000
+const port = process.env.PORT || 5000
 
 
 app.use(cors())
@@ -25,8 +25,9 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
 
-    const instractorCollection= client.db("SportsAcademi").collection("instractor")
+    const instractorCollection = client.db("SportsAcademi").collection("instractor")
     const classCollection = client.db("SportsAcademi").collection("class")
+    const enrollCollection = client.db("SportsAcademi").collection("allEnroll")
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // Send a ping to confirm a successful connection
@@ -34,15 +35,23 @@ async function run() {
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
 
     // get oparator
-    app.get('/instractor', async(req, res)=>{
-      const result= await instractorCollection.find().toArray()
+    app.get('/instractor', async (req, res) => {
+      const result = await instractorCollection.find().toArray()
       res.send(result)
-     })
+    })
 
-     app.get('/class', async (req,res)=>{
+    app.get('/class', async (req, res) => {
       const result = await classCollection.find().toArray()
       return res.send(result)
-     })
+    })
+
+    //  post mathod
+    app.post('/all-enroll', async (req, res) => {
+      const enroll = req.body;
+      const result = await enrollCollection.insertOne(enroll);
+      res.send(result)
+    })
+
 
 
   } finally {
@@ -52,13 +61,13 @@ async function run() {
 }
 run().catch(console.dir);
 
- 
 
-app.get('/', (req, res)=>{
-    res.send('this is first side and assignment ')
+
+app.get('/', (req, res) => {
+  res.send('this is first side and assignment ')
 })
-app.listen(port, ()=>{
-    console.log(`check at first side ${port}`)
+app.listen(port, () => {
+  console.log(`check at first side ${port}`)
 })
 
 
