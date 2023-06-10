@@ -3,6 +3,7 @@ const app = express()
 const cors = require('cors')
 require('dotenv').config()
 const jwt = require('jsonwebtoken');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const stripe = require('stripe')(process.env.PAYMENT_KEY)
 
 const port = process.env.PORT || 5000
@@ -31,7 +32,7 @@ const jwtVerify = (req, res, next) => {
 }
 
 
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.8efoi6h.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -45,17 +46,20 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-
+    const usersCollection = client.db("SportsAcademi").collection("users")
     const instractorCollection = client.db("SportsAcademi").collection("instractor")
     const classCollection = client.db("SportsAcademi").collection("class")
     const enrollCollection = client.db("SportsAcademi").collection("allEnroll")
     const paymentCollection = client.db("SportsAcademi").collection("payment")
 
-    app.post('/jwt', (req, res)=>{
+    app.post('/jwt', (req, res) => {
       const user = req.body;
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SCRECT, {expiresIn: '1hr' })
-    res.send({token})
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SCRECT, { expiresIn: '1hr' })
+      res.send({ token })
     })
+
+    
+
 
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
@@ -74,25 +78,43 @@ async function run() {
       return res.send(result)
     })
 
-    app.get('/enroll', jwtVerify, async(req, res)=>{
+    app.get('/enroll', jwtVerify, async (req, res) => {
       const email = req.query.email;
       // console.log(email)
-      if(!email){
-       return res.send([]);
+      if (!email) {
+        return res.send([]);
       }
       const decodedEmail = req.decoded.email;
-      if(email !== decodedEmail){
-        return res.status(403).send({error: True, message: 'porviden access'})
+      if (email !== decodedEmail) {
+        return res.status(403).send({ error: True, message: 'porviden access' })
       }
-    
-      const query = {email: email};
+
+      const query = { email: email };
       // console.log(query)
       const result = await enrollCollection.find(query).toArray();
       res.send(result)
     })
 
+    app.get('/users', jwtVerify, async (req, res) => {
+      const result = await usersCollection.find().toArray()
+      res.send(result)
+    })
+
 
     //  post mathod
+
+    app.post('/users', async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email }
+      const existing = await usersCollection.insertOne(query)
+
+      if (existing) {
+        return res.send({ message: 'user is alreaady existing' })
+      }
+      const result = await usersCollection.insertOne(user)
+      res.send(result)
+    })
+
     app.post('/all-enroll', async (req, res) => {
       const enroll = req.body;
       const result = await enrollCollection.insertOne(enroll);
@@ -102,7 +124,7 @@ async function run() {
 
     app.post("/create-payment-intent", jwtVerify, async (req, res) => {
       const { price } = req.body;
-      const amount = parseInt(price * 100) ;
+      const amount = parseInt(price * 100);
       // console.log(price, amount)
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
@@ -113,25 +135,25 @@ async function run() {
         clientSecret: paymentIntent.client_secret
       });
     })
-    
-    
-    app.post('/payments', async(req, res)=>{
+
+
+    app.post('/payments', async (req, res) => {
       const payment = req.body;
-      const insertResult= await paymentCollection.insertOne(payment)
-    
+      const insertResult = await paymentCollection.insertOne(payment)
+
       const query = { _id: { $in: payment.cartItems.map(id => new ObjectId(id)) } }
       const deleteResult = await enrollCollection.deleteMany(query)
-    
-      res.send({result: insertResult, deleteResult});
+
+      res.send({ result: insertResult, deleteResult });
     })
-    
+
 
 
     // delete mathod
 
-    app.delete('/enroll/:id', async(req, res)=>{
+    app.delete('/enroll/:id', async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
+      const query = { _id: new ObjectId(id) }
       const result = await enrollCollection.deleteOne(query)
       res.send(result)
     })
