@@ -58,7 +58,7 @@ async function run() {
       res.send({ token })
     })
 
-    
+
 
 
     // Connect the client to the server	(optional starting in v4.7)
@@ -97,6 +97,23 @@ async function run() {
 
     app.get('/users', jwtVerify, async (req, res) => {
       const result = await usersCollection.find().toArray()
+      res.send(result)
+    })
+
+    app.get('/my-enroll-class', jwtVerify, async (req, res) => {
+      const email = req.query.email;
+      // console.log(email)
+      if (!email) {
+        return res.send([]);
+      }
+      const decodedEmail = req.decoded.email;
+      if (email !== decodedEmail) {
+        return res.status(403).send({ error: True, message: 'porviden access' })
+      }
+
+      const query = { email: email };
+      // console.log(query)
+      const result = await paymentCollection.find(query).toArray();
       res.send(result)
     })
 
@@ -146,6 +163,8 @@ async function run() {
 
       res.send({ result: insertResult, deleteResult });
     })
+
+
 
 
 
