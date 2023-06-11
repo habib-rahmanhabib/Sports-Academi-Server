@@ -51,6 +51,9 @@ async function run() {
     const classCollection = client.db("SportsAcademi").collection("class")
     const enrollCollection = client.db("SportsAcademi").collection("allEnroll")
     const paymentCollection = client.db("SportsAcademi").collection("payment")
+    const addClassesCollection = client.db("SportsAcademi").collection("addClasses")
+
+
 
     app.post('/jwt', (req, res) => {
       const user = req.body;
@@ -95,7 +98,7 @@ async function run() {
       res.send(result)
     })
 
-    app.get('/users', jwtVerify, async (req, res) => {
+    app.get('/users', async (req, res) => {
       const result = await usersCollection.find().toArray()
       res.send(result)
     })
@@ -116,6 +119,22 @@ async function run() {
       const result = await paymentCollection.find(query).toArray();
       res.send(result)
     })
+
+    app.get('/users/admin/:email', jwtVerify, async (req, res) => {
+      const email = req.params.email;
+
+      if (req.decoded.email !== email) {
+        res.send({ admin: false })
+      }
+
+      const query = { email: email }
+      const user = await usersCollection.findOne(query);
+      const result = { admin: user?.role === 'admin' }
+      res.send(result);
+    })
+
+
+
 
 
     //  post mathod
@@ -164,11 +183,50 @@ async function run() {
       res.send({ result: insertResult, deleteResult });
     })
 
+    app.post('/addClass', async (req, res) => {
+      const item = req.body;
+      const result = await addClassesCollection.insertOne(item)
+      res.send(result)
+
+    })
+
+
+    // fatche mathod
+
+
+
+    app.patch('/users/admin/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const updateUser = {
+        $set: {
+          role: 'admin'
+        },
+      }
+      const result = await usersCollection.updateOne(query, updateUser)
+      res.send(result)
+    })
+
+    app.patch('/users/instructor/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const updateUser = {
+        $set: {
+          role: 'instructor'
+        },
+      }
+      const result = await usersCollection.updateOne(query, updateUser)
+      res.send(result)
+    })
 
 
 
 
     // delete mathod
+
+
+
+
 
     app.delete('/enroll/:id', async (req, res) => {
       const id = req.params.id;
