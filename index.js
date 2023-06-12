@@ -51,7 +51,7 @@ async function run() {
     const classCollection = client.db("SportsAcademi").collection("class")
     const enrollCollection = client.db("SportsAcademi").collection("allEnroll")
     const paymentCollection = client.db("SportsAcademi").collection("payment")
-    const addClassesCollection = client.db("SportsAcademi").collection("addClasses")
+   
 
 
 
@@ -67,12 +67,11 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+   
 
     // get oparator
     app.get('/instractor', async (req, res) => {
-      const result = await instractorCollection.find().toArray()
+      const result = await instractorCollection.find({}).toArray()
       res.send(result)
     })
 
@@ -134,11 +133,49 @@ async function run() {
     })
 
     app.get('/addClasses', async(req, res)=>{
-      const result = await addClassesCollection.find().toArray()
+      const result = await classCollection.find().toArray()
       res.send(result)
     
     })
+
+    app.get('/users/instructor/:email', jwtVerify, async (req, res) => {
+      const email = req.params.email;
     
+      if (req.decoded.email !== email) {
+        res.send({ admin: false })
+      }
+    
+      const query = { email: email }
+      const user = await usersCollection.findOne(query);
+      const result = { admin: user?.role === 'instructor' }
+      res.send(result);
+    })
+
+    app.get('/my-class', jwtVerify, async(req, res)=>{
+      const email = req.query.email;
+      // console.log(email)
+      if(!email){
+       return res.send([]);
+      }
+      const decodedEmail = req.decoded.email;
+      if(email !== decodedEmail){
+        return res.status(403).send({error: True, message: 'porviden access'})
+      }
+    
+      const query = {email: email};
+      console.log(query)
+      const result = await classCollection.find(query).toArray();
+      res.send(result)
+    })
+
+
+    
+app.delete('/user-delete/:id', async(req, res)=>{
+  const id = req.params.id;
+  const query = {_id: new ObjectId(id)}
+  const result = await usersCollection.deleteOne(query)
+  res.send(result)
+})
 
 
 
@@ -192,7 +229,7 @@ async function run() {
 
     app.post('/addClass', async (req, res) => {
       const item = req.body;
-      const result = await addClassesCollection.insertOne(item)
+      const result = await classCollection.insertOne(item)
       res.send(result)
 
     })
@@ -242,7 +279,9 @@ async function run() {
       res.send(result)
     })
 
-
+ 
+    await client.db("admin").command({ ping: 1 });
+    console.log("Pinged your deployment. You successfully connected to MongoDB!");
 
   } finally {
     // Ensures that the client will close when you finish/error
